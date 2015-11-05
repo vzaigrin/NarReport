@@ -1,5 +1,5 @@
 # NarReport
-NarReport is a Shiny application for analyzing and visualization Nar files from EMC VNX and CLARiiON disks arrays
+NarReport is a Shiny application for analyzing and visualization Nar files from EMC VNX and CLARiiON disk arrays
 
 ## Description
 This applications takes CSV file, extracted from some Nar files from one disk array and performs the next tasks:
