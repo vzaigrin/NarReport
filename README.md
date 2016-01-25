@@ -4,7 +4,7 @@ NarReport is a Shiny application for analyzing and visualization Nar files from 
 ## Description
 This applications takes CSV, configuration and relation files, extracted from some Nar files from one disk array and performs the next tasks:
 * Show relationship between hosts, LUNs, Pools/RGs and disks.
-* Plots review charts for Throughput (total, read or write), Bandwidth (total, read or write), Response Time and Utilization for all SP, Ports, LUNs, Disks or Hosts.
+* Plots review charts for Throughput (total, read or write), Bandwidth (total, read or write), Response Time and Utilization for all SP, Ports, LUNs, Disks and Hosts.
 * Plots combinations charts by 95th percentile statistics.
 * Displays Summary Table for SP, Ports, LUNs, Disks and Hosts with mean, 95th percentile and max statistics.
 * Generate report in PDF format.
