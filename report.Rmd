@@ -1,25 +1,28 @@
 ---
 title: "Performance analysis"
 author: ""
-output: 
-  pdf_document: 
+output:
+  pdf_document:
     fig_crop: no
-    fig_height: 9
-    fig_width: 10
+    fig_height: 14
+    fig_width: 14
     toc: yes
     toc_depth: 3
 params:
-  file: ""
+  file1: ""
+  file2: ""
+  file3: ""
 
 ---
 
-```{r, echo = FALSE, message = FALSE }
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
 library("data.table")
 library("stringr")
 library("ggplot2")
 library("grid")
 library("scales")
 library("pander")
+library("XML")
 
 data2sum <- function( data ) {
 
@@ -91,14 +94,20 @@ data2type <- function( data ) {
 }
 
  
-data.file <- params$file
+data.file <- params$file1
+config.file <- params$file2
+rel.file <- params$file3
+
 
 rawdata <- read.csv( data.file, stringsAsFactor = FALSE )
-arrayname <- rawdata$Owner.Array.Name[1]
-rawdata <- rawdata[ rawdata$Owner.Array.Name == arrayname, ]
+config.doc <- xmlParse(config.file)
+rel.doc <- xmlParse(rel.file)
+array.name <- xpathSApply( config.doc, "//object[@type='Subsystem']//value[@type='Name']", xmlValue )
+array.sn <- xpathSApply( config.doc, "//object[@type='Subsystem']//value[@type='Array Serial Number']", xmlValue )
+rawdata <- rawdata[ rawdata$Owner.Array.Name == array.name, ]
 
 data <- data.table( object = rawdata$Object.Name,
-                    date = as.POSIXct( strptime( rawdata$Poll.Time, "%m/%d/%Y %H:%M:%S" ) ),
+                    date = as.POSIXct( strptime( rawdata$Poll.Time,"%m/%d/%Y %H:%M:%S" ) ),
                     owner = rawdata$Current.Owner,
                     util = rawdata$Utilization...,
                     iops = rawdata$Total.Throughput..IO.s.,
@@ -118,13 +127,13 @@ data <- data.table( object = rawdata$Object.Name,
 
 ## Summary
 
-Performance analysis of the array **`r arrayname`**
+Performance analysis of the array **`r array.name`**, S/N: **`r array.sn`**
 
 Data taken from **`r head( rawdata$Poll.Time, 1 )`** to **`r tail( rawdata$Poll.Time, 1 )`**
 
 ## Controllers
 
-```{r echo = FALSE, message = FALSE }
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 sp.data <- data[ object == "SP A" | object == "SP B", ]
 sp.data$name <- sp.data$object
 sp.sum <- data2sum( sp.data )
@@ -133,9 +142,9 @@ sp.type <- data2type( sp.data )
 
 ### Summary of controllers performance
 
-The list of controllers stats of utilization, IOPS, bandwidth and read and write size.
+The list of controllers stats of IOPS, bandwidth, utilization and read and write size.
 
-```{r echo = FALSE, message = FALSE, results = 'asis' }
+```{r echo = FALSE, message = FALSE, results = 'asis', warning = FALSE }
 sp.sum <- sp.sum[ order( sp.sum$object, decreasing = FALSE ), ]
 pandoc.table( as.data.frame( sp.sum[, list( object, stat, util, iops, bw, rsize, wsize ) ] ),
               caption = "Summary of Controllers performance",
@@ -147,9 +156,9 @@ pandoc.table( as.data.frame( sp.sum[, list( object, stat, util, iops, bw, rsize,
 
 ### Controllers utilization
 
-Plot of the utilization of both controllers with 95th percentile.
+Plot of utilization of both controllers with 95th percentile.
 
-```{r echo = FALSE, message = FALSE }
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 ggplot( data = sp.data, aes( x = date, y = util, colour = object ) ) +
   geom_line() + xlab("") + ylab( "Utilization %" ) +
   ggtitle( "Utilization on SPA and SPB with 95th percentile" ) + 
@@ -158,16 +167,16 @@ ggplot( data = sp.data, aes( x = date, y = util, colour = object ) ) +
   geom_line( y = quantile( sp.data[ object == "SP B", ]$util, c(0.95) ),
              colour = "cyan3", size = 1 ) + 
   scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
-  theme( legend.title = element_blank() )
+  theme( legend.title = element_blank(), strip.text.y = element_text(angle = 0) )
 ```
 
 \newpage
 
 ### Controllers IOPS
 
-Plot of the total throughput on both controllers with 95th percentile.
+Plot of total throughput on both controllers with 95th percentile.
 
-```{r echo = FALSE, message = FALSE }
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 ggplot( data = sp.type[ type == "total", ], aes( x = date, y = iops ) ) +
   geom_area ( aes( colour = object, fill = object ), position = 'stack' ) +
   xlab("") + ylab( "IOPS" ) +
@@ -177,27 +186,28 @@ ggplot( data = sp.type[ type == "total", ], aes( x = date, y = iops ) ) +
   geom_line( y = quantile( sp.type[ type == "total" & object == "SP B", ]$iops, c(0.95) ),
              colour = "cyan3", size = 1 ) +
   scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
-  theme( legend.title = element_blank() )
+  theme( legend.title = element_blank(), strip.text.y = element_text(angle = 0) )
 ```
 
-Plot of the read and write throughput on both controllers.
 
-```{r echo = FALSE, message = FALSE }
+Plot of read and write throughput on both controllers.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 ggplot( data = sp.type, aes( x = date, y = iops, colour = type ) ) +
   geom_line() + xlab("") + ylab( "IOPS" ) +
   ggtitle( "Total, Read and Write Throughput on both SP" ) +
   scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
   scale_color_manual( values = c( "#FF6666", "black", "cyan3" ) ) +
-  facet_grid( object ~ ., scales = "free" ) + theme( legend.title = element_blank() )
+  facet_grid( object ~ . ) + theme( legend.title = element_blank(), strip.text.y = element_text(angle = 0) )
 ```
 
 \newpage
 
 ### Controllers Bandwidth
 
-Plot of the total bandwidth on both controllers with 95th percentile.
+Plot of total bandwidth on both controllers with 95th percentile.
 
-```{r echo = FALSE, message = FALSE }
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 ggplot( data = sp.type[ type == "total", ], aes( x = date, y = bw ) ) +
   geom_area( aes( colour = object, fill = object ), position = 'stack' ) +
   xlab("") + ylab( "MB/s" ) +
@@ -207,47 +217,201 @@ ggplot( data = sp.type[ type == "total", ], aes( x = date, y = bw ) ) +
   geom_line( y = quantile( sp.type[ type == "total" & object == "SP B", ]$bw, c(0.95) ),
              colour = "cyan3", size = 1 ) +
   scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
-  theme( legend.title = element_blank() )
+  theme( legend.title = element_blank(), strip.text.y = element_text(angle = 0) )
 ```
 
-Plot of the read and write bandwidth on both controllers.
 
-```{r echo = FALSE, message = FALSE }
+Plot of read and write bandwidth on both controllers.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 ggplot( data = sp.type, aes( x = date, y = bw, colour = type ) ) +
   geom_line() + xlab("") + ylab( "MB/s" ) + 
   ggtitle( "Total, Read and Write Bandwidth on both SP" ) + 
   scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
   scale_color_manual( values = c( "#FF6666", "black", "cyan3" ) ) + 
-  facet_grid( object ~ ., scales = "free" ) + theme( legend.title = element_blank() )
+  facet_grid( object ~ . ) + theme( legend.title = element_blank(), strip.text.y = element_text(angle = 0) )
 ```
 
 \newpage
 
 ### Controllers Read and Write Size
 
-Plot of the read and write sizes on both controllers.
+Histogram of read and write sizes on both controllers.
 
-```{r echo = FALSE, message = FALSE }
+```{r echo = FALSE, message = FALSE, warning = FALSE }
+ggplot( data = sp.type[ type == "read" | type == "write", ], 
+        aes( x = size, colour = type, fill = type ) ) +
+  geom_histogram( binwidth = 8 ) + facet_grid( ~ object ) +
+  ggtitle( "Read and Write Size on both SP" ) + xlab( "Size, KB" ) + ylab("")
+```
+
+
+Plot of read and write sizes on both controllers.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 ggplot( data = sp.type[ type == "read" | type == "write" ],
         aes( x = date, y = size, colour = type ) ) +
   geom_line() + xlab("") + ylab( "Size, KB" ) + 
   ggtitle( "Read and Write Size on both SP" ) + 
   scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
   facet_grid( object ~ ., scales = "free" ) +
-  theme( legend.title = element_blank() )
+  theme( legend.title = element_blank(), strip.text.y = element_text(angle = 0) )
 ```
 
 \newpage
 
-## LUNs
+## Front-end
 
-```{r echo = FALSE, message = FALSE }
+```{r echo = FALSE, message = FALSE, warning = FALSE }
+port.data <- data[ grepl( "Port ([0-9]+)", object ), ]
+port.data$wwn = str_replace_all( port.data$object, "Port ([0-9]+) \\[FC; ([0-9A-F:]+) \\]", "\\2" )
+spaports <- xpathSApply( rel.doc, "//object[@name='SP A']/object[@type='Port']", xmlAttrs )[2,]
+spbports <- xpathSApply( rel.doc, "//object[@name='SP B']/object[@type='Port']", xmlAttrs )[2,]
+ports <- rbindlist( list(
+           data.table(
+             name = str_replace_all( spaports, "Port ([0-9]+) \\[FC; ([0-9A-F:]+) \\]", "A\\1" ),
+             wwn = str_replace_all( spaports, "Port ([0-9]+) \\[FC; ([0-9A-F:]+) \\]", "\\2" )
+           ),
+           data.table(
+             name = str_replace_all( spbports, "Port ([0-9]+) \\[FC; ([0-9A-F:]+) \\]", "B\\1" ),
+             wwn = str_replace_all( spbports, "Port ([0-9]+) \\[FC; ([0-9A-F:]+) \\]", "\\2" )
+           )
+         ))
+port.data <- merge( port.data, ports, by='wwn', all = TRUE )
+port.data$object <- port.data$name
+port.data[ grepl( "A([0-9]+)", object), ]$owner <- "SPA"
+port.data[ grepl( "B([0-9]+)", object), ]$owner <- "SPB"
+port.sum <- data2sum( port.data )
+port.type <- data2type( port.data )
+port.type$object <- str_replace_all( port.type$object, "([AB])([0-9]+)", "\\2")
+```
+
+### Summary of front-end ports performance
+
+The list of front-end ports stats of IOPS, bandwidth and read and write size.
+
+```{r echo = FALSE, message = FALSE, results = 'asis', warning = FALSE }
+port.sum <- port.sum[ order( port.sum$object, decreasing = FALSE ), ]
+pandoc.table( as.data.frame( port.sum[, list( object, stat, iops, bw, rsize, wsize ) ] ),
+              caption = "Summary of front-end ports performance",
+              justify = c( 'left', 'left', 'right', 'right', 'right', 'right' )
+            )
+```
+
+\newpage
+
+### Front-end ports IOPS
+
+Plot of total throughput on front-end ports.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE }
+ggplot( data = port.type[ type == "total", ], aes( x = date, y = iops ) ) +
+  geom_area ( aes( colour = object, fill = object ), position = 'stack' ) +
+  xlab("") + ylab( "IOPS" ) +
+  ggtitle( "Total Throughput on front-end ports" ) +
+  scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
+  theme( legend.title = element_blank(), strip.text.y = element_text(angle = 0) ) + facet_grid( . ~ owner )
+```
+
+
+Plot of read and write throughput on front-end ports.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE }
+ggplot( data = port.type, aes( x = date, y = iops, colour = type ) ) +
+  geom_line() + xlab("") + ylab( "IOPS" ) +
+  ggtitle( "Total, Read and Write Throughput on front-end ports" ) +
+  scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
+  scale_color_manual( values = c( "#FF6666", "black", "cyan3" ) ) +
+  facet_grid( object ~ owner ) + theme( legend.title = element_blank(), strip.text.y = element_text(angle = 0) )
+```
+
+\newpage
+
+### Front-end ports Bandwidth
+
+Plot of total bandwidth on front-end ports.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE }
+ggplot( data = port.type[ type == "total", ], aes( x = date, y = bw ) ) +
+  geom_area( aes( colour = object, fill = object ), position = 'stack' ) +
+  xlab("") + ylab( "MB/s" ) +
+  ggtitle( "Total Bandwidth on front-end port" ) +
+  scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
+  theme( legend.title = element_blank(), strip.text.y = element_text(angle = 0) ) + facet_grid( . ~ owner )
+```
+
+
+Plot of read and write bandwidth on front-end ports.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE }
+ggplot( data = port.type, aes( x = date, y = bw, colour = type ) ) +
+  geom_line() + xlab("") + ylab( "MB/s" ) + 
+  ggtitle( "Total, Read and Write Bandwidth on front-end port" ) + 
+  scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
+  scale_color_manual( values = c( "#FF6666", "black", "cyan3" ) ) + 
+  facet_grid( object ~ owner ) + theme( legend.title = element_blank(), strip.text.y = element_text(angle = 0) )
+```
+
+\newpage
+
+### Front-end ports Read and Write Size
+
+Histogram of read and write sizes on front-end ports.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE }
+ggplot( data = port.type[ type == "read" | type == "write", ], 
+        aes( x = size, colour = type, fill = type ) ) +
+  geom_histogram( binwidth = 8 ) + facet_grid( owner ~ object ) +
+  ggtitle( "Read and Write Size on front-end ports" ) + xlab( "Size, KB" ) + ylab("")
+```
+
+
+Plot of read and write sizes on front-end ports.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE }
+ggplot( data = port.type[ type == "read" | type == "write" ],
+        aes( x = date, y = size, colour = type ) ) +
+  geom_line() + xlab("") + ylab( "Size, KB" ) + 
+  ggtitle( "Read and Write Size on front-end ports" ) + 
+  scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
+  facet_grid( object ~ owner, scales = "free" ) +
+  theme( legend.title = element_blank(), strip.text.y = element_text(angle = 0) )
+```
+
+\newpage
+
+## Pools, RAID Groups and LUNs
+
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 lun.data <- data[ grepl( "([[:print:]]+) \\[([0-9]+);", object ), ]
-lun.data$name <- str_replace_all( lun.data$object,
-                                    "([[:print:]]+) \\[([0-9]+); ([[:print:]]+)","\\1" )
-lun.data$object <- str_replace_all( lun.data$object,
-                                 "([[:print:]]+) \\[([0-9]+); ([[:print:]]+)","\\2" )
-lun.data$owner <- paste( "SP", lun.data$owner )
+lun.data$name <- str_replace_all( lun.data$object, "([[:print:]]+) \\[([0-9]+)([[:print:]]+)","\\1" )
+lun.data$object <- str_replace_all( lun.data$object, "([[:print:]]+) \\[([0-9]+)([[:print:]]+)","\\2" )
+lun.data$sp <- paste( "SP", lun.data$owner, sep = "" )
+
+lun.owners <- rbindlist( lapply( c(
+  xpathSApply( rel.doc, "//object[@type='RAID Group']", xmlGetAttr, 'name' ),
+  xpathSApply( rel.doc, "//object[@type='Pool']", xmlGetAttr, 'name' ) ),
+  function(x) data.table( lun = xpathSApply( rel.doc,
+                                             paste("//object[@name='",x,"']/object[@type='Pool Public LUN' or
+                                                   @type='Public RaidGroup LUN' or
+                                                   @type='Private RaidGroup LUN']",
+                                                   sep=""),
+                                             xmlGetAttr, 'name' ),
+                          owner = x )
+))
+
+lun.owners$name <- str_replace_all( lun.owners$lun, "([[:print:]]+) \\[([0-9]+)([[:print:]]+)","\\1" )
+lun.owners$object <- str_replace_all( lun.owners$lun, "([[:print:]]+) \\[([0-9]+)([[:print:]]+)","\\2" )
+lun.owners$owner <- str_replace_all( lun.owners$owner, "(Raid Group) ([0-9]+)", "RG \\2" )
+
+lun.data <- merge( lun.data, lun.owners, by='object', all = TRUE )
+lun.data$owner <- lun.data$owner.y
+lun.data$name <- lun.data$name.y
+lun.data$owner.x <- NULL
+lun.data$owner.y <- NULL
+lun.data$name.x <- NULL
+lun.data$name.y <- NULL
+lun.data <- lun.data[ !is.na(date), ]
 
 lun.sum <- data2sum( lun.data )
 lun.type <- data2type( lun.data )
@@ -257,12 +421,12 @@ lun.type <- data2type( lun.data )
 
 The list of all LUNs with 95th percentile of IOPS, bandwidth, utilization, response time and queue length, sorted by IOPS.
 
-```{r echo = FALSE, message = FALSE, results = 'asis' }
+```{r echo = FALSE, message = FALSE, results = 'asis', warning = FALSE }
 ls <- lun.sum[ stat == "95th", ]
 ls <- ls[ order( ls$iops, decreasing = TRUE ), ]
-pandoc.table( as.data.frame( ls[, list( object, iops, bw, util, rt, ql ) ] ),
+pandoc.table( as.data.frame( ls[, list( object, name, owner, iops, bw, util, rt, ql ) ] ),
               caption = "Summary LUNs performance",
-              justify = c( 'left', 'right', 'right', 'right', 'right', 'right' )
+              justify = c( 'left', 'left', 'left', 'right', 'right', 'right', 'right', 'right' )
             )
 ```
 
@@ -270,68 +434,70 @@ pandoc.table( as.data.frame( ls[, list( object, iops, bw, util, rt, ql ) ] ),
 
 ### LUNs IOPS
 
-Histogram of the total throughput by 95th percentile of all LUNs on both controllers.
+Histogram of total throughput by 95th percentile of all LUNs.
 
-```{r echo = FALSE, message = FALSE }
-ls$n <- c( 1 : dim(ls)[1] )
-ggplot( data = ls, aes( n, iops ) ) +
+```{r echo = FALSE, message = FALSE, warning = FALSE }
+ggplot( data = ls, aes( 1 : dim(ls)[1], iops ) ) +
   geom_bar( stat = "identity", aes( fill = owner ) ) +
   ylab( "IOPS" ) + xlab( "LUNs" ) + 
   ggtitle( "Total IOPS on all LUNs by 95th percentile" ) +
-  scale_x_discrete( limits = c( 1 : dim(ls)[1] ),
+  geom_line( aes( y = ( cumsum( ls$iops ) * max( ls$iops ) ) / max( cumsum( ls$iops ) ) ) ) +
+  scale_x_discrete( limits = c( 1 : dim(ls)[1]),
                     label = function(x) { paste( ls$object, ": ", ls[ x, ]$name ) } ) +
-  theme( axis.text.x = element_text( angle = 90, size = rel(0.3) ),
-         legend.title = element_blank() )
+  theme( axis.text.x = element_text( angle = 90, size = rel(0.3) ), legend.title = element_blank() )
 ```
 
-Plot of the total throughput of all LUNs on both controllers.
 
-```{r echo = FALSE, message = FALSE }
+Plot of total throughput of all LUNs.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 ggplot( data = lun.type[ type == "total", ], aes( x = date, y = iops, colour = object ) ) +
-  geom_line() + xlab("") + ylab( "IOPS" ) +
-  ggtitle( "Total Throughput of all LUNs on SP A and SP B" ) + 
+  geom_area( aes( colour = object, fill = object ), position = 'stack') +
+  xlab("") + ylab( "IOPS" ) + ggtitle( "Total Throughput of all LUNs" ) + 
   scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
   facet_grid( owner ~ ., scales = "free"  ) + 
-  theme( legend.position = "none" )
+  theme( legend.position = "none", strip.text.y = element_text(angle = 0) )
 ```
 
-Plot of the read and write throughput of all LUNs on both controllers.
 
-```{r echo = FALSE, message = FALSE }
+Plot of read and write throughput of all LUNs.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 ggplot( data = lun.type[ type == "read" | type == "write", ],
         aes( x = date, y = iops, colour = object ) ) +
   geom_line() + xlab("") + ylab( "IOPS" ) +
-  ggtitle( "Read and Write Throughput of all LUNs on SP A and SP B" ) + 
+  ggtitle( "Read and Write Throughput of all LUNs" ) + 
   scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
   facet_grid( owner ~ type, scales = "free" ) + 
-  theme( axis.text.x = element_text( angle = 90 ), legend.position = "none" )
+  theme( axis.text.x = element_text( angle = 90 ), legend.position = "none", strip.text.y = element_text(angle = 0) )
 ```
 
 \newpage
 
 ### LUNs Bandwidth
 
-Plot of the total bandwidth of all LUNs on both controllers in MB/s.
+Plot of total bandwidth of all LUNs in MB/s.
 
-```{r echo = FALSE, message = FALSE }
+```{r echo = FALSE, message = FALSE, warning = FALSE}
 ggplot( data = lun.type[ type == "total", ], aes( x = date, y = bw, colour = object ) ) +
-  geom_line() + xlab("") + ylab( "MB/s" ) +
-  ggtitle( "Total Bandwidth of all LUNs on SP A and SP B" ) +
+  geom_area( aes( colour = object, fill = object ), position = 'stack') +
+  xlab("") + ylab( "MB/s" ) + ggtitle( "Total Bandwidth of all LUNs" ) +
   scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
   facet_grid( owner ~ ., scales = "free" ) + 
-  theme( legend.position = "none" )
+  theme( legend.position = "none", strip.text.y = element_text(angle = 0) )
 ```
 
-Plot of the read and write bandwidth of all LUNs on both controllers.
 
-```{r echo = FALSE, message = FALSE }
+Plot of read and write bandwidth of all LUNs.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 ggplot( data = lun.type[ type == "read" | type == "write", ],
         aes( x = date, y = bw, colour = object ) ) +
-  geom_line() + xlab("") + ylab( "MB/s" ) +
-  ggtitle( "Read and Write Bandwidth of all LUNs on SP A and SP B" ) + 
+  geom_area( aes( colour = object, fill = object ), position = 'stack') + xlab("") +
+  ylab( "MB/s" ) + ggtitle( "Read and Write Bandwidth of all LUNs on SP A and SP B" ) + 
   scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
   facet_grid( owner ~ type, scales = "free" ) + 
-  theme( axis.text.x = element_text( angle = 90 ), legend.position = "none" )
+  theme( axis.text.x = element_text( angle = 90 ), legend.position = "none", strip.text.y = element_text(angle = 0) )
 ```
 
 \newpage
@@ -340,24 +506,25 @@ ggplot( data = lun.type[ type == "read" | type == "write", ],
 
 The list of LUNs stats of read and write sizes.
 
-```{r echo = FALSE, message = FALSE, results = 'asis' }
+```{r echo = FALSE, message = FALSE, results = 'asis', warning = FALSE }
 lun.sum <- lun.sum[ order( as.numeric(lun.sum$object), decreasing = FALSE ), ]
-pandoc.table( as.data.frame( lun.sum[ stat == "95th", list( object, name, rsize, wsize ) ] ),
+pandoc.table( as.data.frame( lun.sum[ stat == "95th", list( object, name, owner, rsize, wsize ) ] ),
               caption="LUNs Read/Write Size by 95th percentile",
-              justify = c( 'left', 'left', 'right', 'right' )
+              justify = c( 'left', 'left', 'left', 'right', 'right' )
             )
 ```
 
-Plot of read and write sizes of all LUNs on both controllers.
 
-```{r echo = FALSE, message = FALSE }
+Plot of read and write sizes of all LUNs.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 ggplot( data = lun.type[ type == "read" | type == "write" ],
         aes( x = date, y = size, colour = object ) ) +
   geom_line() + xlab("") + ylab( "Size, KB" ) +
   ggtitle( "Read and Write Size of all LUNs on both SP" ) +
   scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
   facet_grid( owner ~ type, scales = "free" ) +
-  theme( axis.text.x = element_text( angle = 90 ), legend.position = "none" )
+  theme( axis.text.x = element_text( angle = 90 ), legend.position = "none", strip.text.y = element_text(angle = 0) )
 ```
 
 \newpage
@@ -366,128 +533,167 @@ ggplot( data = lun.type[ type == "read" | type == "write" ],
 
 Relation of response time to throughput by queue length and utilization by 95th percentile.
 
-```{r echo = FALSE, message = FALSE }
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 ggplot( data = lun.sum[ stat == "95th", ], aes( iops, rt, label = object ) ) + 
   geom_point( aes( size = ql, colour = util ) ) + 
   geom_text( hjust = -0.2, vjust = -0.6, size = 3 ) +
   xlab( "IOPS" ) + ylab( "Response Time" ) +
   ggtitle( "LUNs: Response Time vs IOPS by QL and Utilization" ) + 
-  scale_color_gradient( low = "green", high = "red" )
+  scale_color_gradient( low = "green", high = "red" ) + facet_grid( owner ~ ., scales = "free" )
 ```
+
 
 Relation of bandwidth to throughput to by response time and utilization by 95th percentile.
 
-```{r echo = FALSE, message = FALSE }
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 ggplot( data = lun.sum[ stat == "95th", ], aes( iops, bw, label = object ) ) + 
   geom_point( aes( size = rt, colour = util ) ) +
   geom_text( hjust = -0.5, vjust = -0.5, size = 3 ) + xlab( "IOPS" ) + ylab( "MB/s" ) + 
   ggtitle( "LUNs: Bandwidth vs IOPS by Response Time and Utilization" ) +
-  scale_color_gradient( low = "green", high = "red" )
+  scale_color_gradient( low = "green", high = "red" ) + facet_grid( owner ~ ., scales = "free" )
 ```
+
 
 Realtion of write throughput to read throughput by response time and utilization by 95th percentile.
 
-```{r echo = FALSE, message = FALSE }
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 ggplot( data = lun.sum[ stat == "95th", ], aes( riops, wiops, label = object )) +
   geom_point( aes( colour = util, size = rt ) ) +
   geom_text( hjust = -0.5, vjust = -0.5, size = 3 ) + 
   xlab( "Read IOPS" ) + ylab( "Write IOPS" ) + 
   ggtitle( "Write IOPS vs Read IOPS by Utilization and Response Time" ) + 
-  scale_color_gradient( low = "green", high = "red" )
+  scale_color_gradient( low = "green", high = "red" ) + facet_grid( owner ~ ., scales = "free" )
 ```
 
 \newpage
 
 ## Disks
 
-```{r echo = FALSE, message = FALSE }
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 disk.data <- data[ grepl( "Bus [0-9]", object ), ]
 disk.data$name <- disk.data$object
-disk.data$owner <- str_replace_all( disk.data$name,
+disk.data$bus <- str_replace_all( disk.data$name,
                                     "Bus ([0-9]) Enclosure ([0-9]) Disk ([0-9]+)",
                                     "\\1" )
 disk.data$object <- str_replace_all( disk.data$name,
                                     "Bus ([0-9]) Enclosure ([0-9]) Disk ([0-9]+)",
                                     "\\1_\\2_\\3" )
 
+disk.config <- as.data.table( cbind(
+                 xpathSApply( config.doc, "//object[@type='Disk']//value[@type='Name']", xmlValue ),
+                 xpathSApply( config.doc, "//object[@type='Disk']//value[@type='Drive Type']", xmlValue )
+               ))
+names(disk.config) <- c("name","type")
+disk.config$object <- str_replace_all( disk.config$name, "Bus ([0-9]) Enclosure ([0-9]) Disk ([0-9]+)", "\\1_\\2_\\3" )
+
+disk.owners <- rbindlist( lapply( c(
+              xpathSApply( rel.doc, "//object[@type='RAID Group']",xmlGetAttr,'name' ),
+              xpathSApply( rel.doc, "//object[@type='Pool']",xmlGetAttr,'name' ) ),
+              function(x) data.table( disk = xpathSApply( rel.doc,
+                                                          paste("//object[@name='",x,"']/object[@type='Disk']", sep=""),
+                                                          xmlGetAttr, 'name' ),
+                                      owner = x )
+            ))
+
+disk.owners$name <- disk.owners$disk
+disk.owners$object <- str_replace_all( disk.owners$name, "Bus ([0-9]) Enclosure ([0-9]) Disk ([0-9]+)", "\\1_\\2_\\3" )
+disk.owners$owner <- str_replace_all( disk.owners$owner, "(Raid Group) ([0-9]+)", "RG \\2" )
+
+disk.co <- merge( disk.config, disk.owners, by = "object", all = TRUE )
+disk.co$name.x <- NULL
+disk.co$name.y <-NULL
+disk.co$disk <- NULL
+
+disk.data <- merge( disk.data, disk.co, by = "object", all = TRUE )
+disk.data$owner <- disk.data$owner.y
+disk.data$owner.x <- NULL
+disk.data$owner.y <- NULL
+
+disk.data$name <- disk.data$type
 disk.sum <- data2sum( disk.data )
+
+disk.data$owner <- disk.data$bus
 disk.type <- data2type( disk.data )
 ```
 
 ### Summary of disks performance
 
-The list of all disks with 95th percentile of utilization, IOPS, bandwidth, service time and queue length, sorted by utilization.
+The list of all disks with 95th percentile of IOPS, bandwidth, utilization, service time and queue length, sorted by IOPS.
 
-```{r echo = FALSE, message = FALSE, results = 'asis' }
+```{r echo = FALSE, message = FALSE, results = 'asis', warning = FALSE }
 ds <- disk.sum[ stat == "95th", ]
-ds <- ds[ order( ds$util, decreasing = TRUE ), ]
-pandoc.table( as.data.frame( ds[, list( object, util, iops, bw, st, ql ) ]),
+ds <- ds[ order( ds$iops, decreasing = TRUE ), ]
+ds$type <- ds$name
+pandoc.table( as.data.frame( ds[, list( object, type, owner, util, iops, bw, st, ql ) ]),
               caption = "Summary Disks performance",
-              justify = c( 'left', 'right', 'right', 'right', 'right', 'right' ) )
+              justify = c( 'left', 'left', 'left', 'right', 'right', 'right', 'right', 'right' ) )
 ```
 
 \newpage
 
 ### Disks Heatmap
 
-```{r echo = FALSE, message = FALSE }
-dhm <- disk.sum[ stat == "95th", .( object, util ) ]
+```{r echo = FALSE, message = FALSE, warning = FALSE }
+dhm <- disk.sum[ stat == "95th", .( object, owner, util ) ]
 dhm$dae <- str_replace_all( dhm$object, "([0-9]+)_([0-9]+)_([0-9]+)", "\\1_\\2" )
 dhm$disk <- as.numeric( str_replace_all( dhm$object, "([0-9]+)_([0-9]+)_([0-9]+)", "\\3" ) )
+dhm[ is.na(dhm$owner), ]$owner <- ""
 
 ggplot( dhm, aes( disk, dae ) ) + geom_tile( aes( fill = util ), colour = "black" ) +
   scale_fill_gradient( low = "green", high = "red", limits=c( 0, 100 ) ) + 
   xlab( "Disk" ) + ylab( "DAE" ) +
-  ggtitle( "Disks Utilization Heatmap by 95th percentile" ) +
+  ggtitle( "Disks Utilization Hetamap by 95th percentile" ) +
   scale_x_discrete( limits = c( 0 : max( dhm$disk ) ) ) +
-  theme_classic() + theme( legend.title = element_blank() )
+  theme_classic() + theme( legend.title = element_blank() ) + geom_text( aes( label = owner ), size = 2.8 )
 ```
 
 \newpage
 
 ### Disks IOPS
 
-Plot of the total throughput of all disks by buses.
+Plot of total throughput of all disks by buses.
 
-```{r echo = FALSE, message = FALSE }
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 ggplot( data = disk.type[ type == "total", ], aes( x = date, y = iops, colour = object ) ) +
   geom_line() + xlab("") + ylab( "IOPS" ) +
   ggtitle( "Total Throughput of all Disks by Buses" ) + 
   scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
   facet_grid( owner ~ ., scales = "free" ) +
-  theme( legend.position = "none" )
+  theme( legend.position = "none", strip.text.y = element_text(angle = 0) )
 ```
 
-Plot of the read and write throughput of all disks by buses.
 
-```{r echo = FALSE, message = FALSE }
+Plot of read and write throughput of all disks by buses.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 ggplot( data = disk.type[ type == "read" | type == "write", ],
         aes( x = date, y = iops, colour = object ) ) + geom_line() +
   xlab("") + ylab( "IOPS" ) + 
   ggtitle( "Read and Write Throughput of all Disks by Buses" ) + 
   scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
   facet_grid( owner ~ type, scales = "free" ) + 
-  theme( axis.text.x = element_text( angle = 90 ), legend.position = "none" )
+  theme( axis.text.x = element_text( angle = 90 ), legend.position = "none", strip.text.y = element_text(angle = 0) )
 ```
 
 \newpage
 
 ### Disks Bandwidth
 
-Plot of the total bandwidth of all disks by buses, in MB/s.
+Plot of total bandwidth of all disks on both controllers in MB/s.
 
-```{r echo = FALSE, message = FALSE }
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 ggplot( data = disk.type[ type == "total", ], aes( x = date, y = bw ) ) +
   geom_area( aes( colour = object ), position = 'stack') +
   xlab("") + ylab( "MB/s" ) + ggtitle( "Total Bandwidth of all Disks by Buses" ) +
   scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
   facet_grid( owner ~ ., scales = "free" ) +
-  theme( axis.text.x = element_text( angle = 90 ), legend.position = "none" )
+  theme( axis.text.x = element_text( angle = 90 ), legend.position = "none", strip.text.y = element_text(angle = 0) )
 ```
 
-Plot of the read and write bandwidth of all disks by buses.
 
-```{r echo = FALSE, message = FALSE }
+Plot of read and write bandwidth of all disks by buses.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 ggplot( data = disk.type[ type == "read" | type == "write", ],
         aes( x = date, y = bw, colour = object ) ) +
   geom_line() +
@@ -495,104 +701,122 @@ ggplot( data = disk.type[ type == "read" | type == "write", ],
   ggtitle( "Read and Write Bandwidth of all Disks by Buses" ) + 
   scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
   facet_grid( owner ~ type, scales = "free" ) + 
-  theme( axis.text.x = element_text( angle = 90 ), legend.position = "none" )
+  theme( axis.text.x = element_text( angle = 90 ), legend.position = "none", strip.text.y = element_text(angle = 0) )
 ```
 
 \newpage
 
 ### Disks performance classification
 
-Relation of utilization to throughput by queue length and service time by 95th percentile.
+Relation of utiliztion to throughput by queue length and service time by 95th percentile.
 
-```{r echo = FALSE, message = FALSE }
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 ggplot( data = disk.sum[ stat == "95th", ], aes( iops, util, label = object ) ) +
   geom_point( aes( size = st, colour = ql ) ) +
   geom_text( hjust = -0.2, vjust = -0.2, size = 3 ) +
   xlab( "IOPS" ) + ylab( "Utilization" ) + 
   ggtitle( "Disks: Utilization vs IOPS by Service Time and QL" ) +
-  scale_color_gradient( low = "green", high = "red" )
+  scale_color_gradient( low = "green", high = "red" ) + facet_grid( . ~ name, scales = "free" )
 ```
+
 
 Relation of bandwidth to throughput to by service time and utilization by 95th percentile.
 
-```{r echo = FALSE, message = FALSE }
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 ggplot( data = disk.sum[ stat == "95th", ], aes( iops, bw, label = object ) ) + 
   geom_point( aes( size = st, colour = util ) ) +
   geom_text( hjust = -0.5, vjust = -0.5, size = 3 ) + xlab( "IOPS" ) + ylab( "MB/s" ) + 
-  ggtitle( "Disks: Bandwidth vs IOPS by Service Time and Utilization" ) +
-  scale_color_gradient( low = "green", high = "red" )
+  ggtitle( "LUNs: Bandwidth vs IOPS by Service Time and Utilization" ) +
+  scale_color_gradient( low = "green", high = "red" ) + facet_grid( . ~ name, scales = "free" )
 ```
 
-Relation of write throughput to read throughput by service time and utilization by 95th percentile.
 
-```{r echo = FALSE, message = FALSE }
+Realtion of write throughput to read throughput by service time and utilization by 95th percentile.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 ggplot( data = disk.sum[ stat == "95th", ], aes( riops, wiops, label = object )) +
   geom_point( aes( colour = util, size = st ) ) +
   geom_text( hjust = -0.5, vjust = -0.5, size = 3) + 
   xlab( "Read IOPS" ) + ylab( "Write IOPS" ) + 
-  ggtitle( "Disks: Write IOPS vs Read IOPS by Utilization and Service Time" ) + 
-  scale_color_gradient( low = "green", high = "red" )
+  ggtitle( "Write IOPS vs Read IOPS by Utilization and Service Time" ) + 
+  scale_color_gradient( low = "green", high = "red" ) + facet_grid( . ~ name, scales = "free" )
 ```
 
 \newpage
 
 ## Hosts
 
-Information about workloads of hosts were extracted from LUN data.
+Information about host's workload was extracted from LUN data.
 
-```{r echo = FALSE, message = FALSE }
-host.data <- data[ grepl( "([[:print:]]+) \\[([0-9]+);", object ), ]
+```{r echo = FALSE, message = FALSE, warning = FALSE }
+lun.hosts <- rbindlist( lapply( c(
+               xpathSApply( rel.doc, "//object[@type='SP']//object[@type='Public RaidGroup LUN']", xmlGetAttr, 'name' ),
+               xpathSApply( rel.doc, "//object[@type='SP']//object[@type='Pool Public LUN']", xmlGetAttr, 'name' )),
+               function(x) data.table(
+                 lun = x,
+                 host = xpathSApply( rel.doc,
+                                     paste( "//object[@type='SP']//object[@name='",x,"']/object[@type='Host']", sep="" ),
+                                     xmlGetAttr, 'name' )
+               )
+             ))
+lun.hosts <- lun.hosts[ host != 'NULL', ]
+lun.hosts$lun.name <- str_replace_all( lun.hosts$lun, "([[:print:]]+) \\[([0-9]+)([[:print:]]+)","\\1" )
+lun.hosts$lun <- str_replace_all( lun.hosts$lun, "([[:print:]]+) \\[([0-9]+)([[:print:]]+)","\\2" )
+lun.hosts$host <- unlist(lun.hosts$host)
+setnames(lun.hosts, c("lun", "host", "name"))
 
-host.data$lun <-  str_replace_all( host.data$object,
-                                 "([[:print:]]+) \\[([0-9]+); ([[:print:]]+)","\\2" )
-host.data$lun.name <- str_replace_all( host.data$object,
-                                    "([[:print:]]+) \\[([0-9]+); ([[:print:]]+)","\\1" )
+lun.pools <- lun.owners
+lun.pools$lun <- NULL
+setnames(lun.pools,c("pool","name","lun"))
 
-host.data$object <- str_replace_all( host.data$object,
-                                     "([[:print:]]+) \\[([0-9]+); ([[:print:]]+)\\]",
-                                     "\\3" )
-host.data$object <- str_replace_all( host.data$object,"RAID ([0-9_]+)", "" )
-host.data$object <- str_replace_all( host.data$object,"^; ", "" )
-
-host.data <- host.data[ object != "", ]
-```
-
-The list of hosts connected to the array:
-
-```{r, echo = FALSE, message = FALSE }
-levels( as.factor( host.data$object ) )
+lun.pool.host <- merge( lun.pools, lun.hosts, by=c('lun','name'), all = FALSE )
 ```
 
 The list of hosts and connected to them LUNs.
 
-```{r echo = FALSE, message = FALSE }
-sapply( levels( as.factor( host.data$object ) ),
-        function(x) cbind( levels( as.factor( host.data[ object == x, ]$lun ) ),
-                           levels( as.factor( host.data[ object == x, ]$lun.name ) )
-                           ) )
+```{r echo = FALSE, message = FALSE, results = 'asis', warning = FALSE }
+for (x in levels(as.factor(lun.pool.host$host)))  {
+  print(x)
+  lh <- lun.pool.host[ host == x, ]
+  lh$lun <- as.integer(lh$lun)
+  pandoc.table( lh[ order(lh$lun), .(lun, name, pool) ])
+}
 ```
 
-```{r echo = FALSE, message = FALSE }
-host.data <- host.data[, list( mean(util), sum(iops), sum(riops), sum(wiops),
-                               sum(bw), sum(rbw), sum(wbw), mean(rsize), mean(wsize),
-                               mean(rt), mean(st), mean(ql) ), by = list( object, date ) ]
-
-setnames( host.data, c( "object", "date", "util", "iops", "riops", "wiops",
-                        "bw", "rbw", "wbw", "rsize", "wsize", "rt", "st", "ql") )
-
-host.data$name <- host.data$object
-host.data$owner <- ""
+```{r echo = FALSE, message = FALSE, warning = FALSE }
+host.data <- data[ grepl( "([[:print:]]+) \\[([0-9]+);", object ), ]
+host.data$lun <-  str_replace_all( host.data$object, "([[:print:]]+) \\[([0-9]+); ([[:print:]]+)", "\\2" )
+host.data$lun.name <- str_replace_all( host.data$object, "([[:print:]]+) \\[([0-9]+); ([[:print:]]+)", "\\1" )
+host.data <- rbindlist( lapply( levels(as.factor(lun.hosts$host)),
+                                function(x) cbind(host.data[ lun %in% lun.hosts[ host == x, lun]], host=x) ) )
+host.data$object <- host.data$lun
+host.data$name <- host.data$lun.name
+host.data$owner <- host.data$host
+host.data$lun <- NULL
+host.data$lun.name <- NULL
+host.data$host <- NULL
 
 host.sum <- data2sum( host.data )
 host.type <- data2type( host.data )
 ```
 
+\newpage
+
 ### Summary of hosts performance
 
 The list of all hosts with 95th percentile of IOPS, bandwidth, utilization, response time and queue length, sorted by IOPS.
 
-```{r echo = FALSE, message = FALSE, results = 'asis' }
-hs <- host.sum[ stat == "95th", ]
+```{r echo = FALSE, message = FALSE, results = 'asis', warning = FALSE }
+hds <- host.data[, list( mean(util), sum(iops), sum(riops), sum(wiops),
+                         sum(bw), sum(rbw), sum(wbw), mean(rsize), mean(wsize),
+                         mean(rt), mean(st), mean(ql) ), by = list( owner, date ) ]
+setnames( hds, c( "object", "date", "util", "iops", "riops", "wiops",
+                  "bw", "rbw", "wbw", "rsize", "wsize", "rt", "st", "ql") )
+hds$name <- hds$object
+hds$owner <- ""
+hds.sum <- data2sum( hds )
+
+hs <- hds.sum[ stat == "95th", ]
 hs <- hs[ order( hs$iops, decreasing = TRUE ), ]
 pandoc.table( as.data.frame( hs[, list( object, iops, bw, util, rt, ql ) ] ),
               caption = "Summary hosts performance",
@@ -604,99 +828,95 @@ pandoc.table( as.data.frame( hs[, list( object, iops, bw, util, rt, ql ) ] ),
 
 ### Hosts IOPS
 
-Histogram of the total throughput of all hosts by 95th percentile.
+Histogram of total throughput by 95th percentile of all hosts.
 
-```{r echo = FALSE, message = FALSE }
-hs$n <- c( 1 : dim(hs)[1] )
-ggplot( data = hs, aes( n, iops ) ) +
+```{r echo = FALSE, message = FALSE, warning = FALSE }
+ggplot( data = hs, aes( 1 : dim(hs)[1], iops ) ) +
   geom_bar( stat = "identity", fill="blue" ) +
   ylab( "IOPS" ) + xlab( "" ) + 
   ggtitle( "Total IOPS on all hosts by 95th percentile" ) +
-  scale_x_discrete( limits = c( 1 : dim(hs)[1] ), label = hs$object ) +
-  theme( axis.text.x = element_text( angle = 90, size = 10, face="bold" ),
-         legend.title = element_blank() )
+  geom_line( aes( y = ( cumsum( hs$iops ) * max( hs$iops ) ) / max( cumsum( hs$iops ) ) ) ) +
+  scale_x_discrete( limits = c( 1 : dim(hs)[1]), label = hs$object ) +
+  theme( axis.text.x = element_text( angle = 90, size = 10, face="bold" ), legend.title = element_blank() )
 ```
 
-Plot of the total throughput of all hosts.
 
-```{r echo = FALSE, message = FALSE }
-ggplot( data = host.type[ type == "total", ], aes( x = date, y = iops ) ) +
-  geom_area( aes( colour = object, fill = object ), position = 'stack' ) +
-  xlab("") + ylab( "IOPS" ) +
-  ggtitle( "Total Throughput of all hosts" ) + 
+Plot of total throughput of all hosts.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE }
+ggplot( data = host.type[ type == "total", ], aes( x = date, y = iops, colour = object ) ) +
+  geom_area( aes( colour = object, fill = object ), position = 'stack') +
+  xlab("") + ylab( "IOPS" ) + ggtitle( "Total Throughput of all hosts" ) + 
   scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
-  theme( legend.title = element_blank(), legend.key.size = unit( 1, "lines" ) )
+  facet_grid( owner ~ ., scales = "free"  ) + 
+  theme( legend.position = "none", strip.text.y = element_text(angle = 0) )
 ```
 
-Plot of the read and write throughput of all hosts.
 
-```{r echo = FALSE, message = FALSE }
+Plot of read and write throughput of all hosts.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 ggplot( data = host.type[ type == "read" | type == "write", ],
-        aes( x = date, y = iops, colour = object ) ) + geom_line() +
-  xlab("") + ylab( "IOPS" ) + 
-  ggtitle( "Read and Write Throughput of all hosts" ) + 
+        aes( x = date, y = iops, colour = object ) ) +
+  geom_area( aes( colour = object, fill = object ), position = 'stack') +
+  xlab("") + ylab( "IOPS" ) + ggtitle( "Read and Write Throughput of all hosts" ) + 
   scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
-  facet_grid( ~ type, scales = "free" ) + 
-  theme( axis.text.x = element_text( angle = 90 ), 
-         legend.text = element_text( size = rel(0.5) ),
-         legend.title = element_blank(), legend.key.size = unit( 1, "lines" ) )
+  facet_grid( owner ~ type, scales = "free" ) + 
+  theme( axis.text.x = element_text( angle = 90 ), legend.position = "none", strip.text.y = element_text(angle = 0) )
 ```
 
 \newpage
 
-### Hosts Bandwidth
+### Host Bandwidth
 
-Plot of the total bandwidth of all hosts.
+Plot of total throughput of all hosts.
 
-```{r echo = FALSE, message = FALSE }
-ggplot( data = host.type[ type == "total", ], aes( x = date, y = bw ) ) +
-  geom_area( aes( colour = object, fill = object ), position = 'stack' ) +
-  xlab("") + ylab( "MB/s" ) + 
-  ggtitle( "Total Bandwidth of all hosts" ) +
+```{r echo = FALSE, message = FALSE, warning = FALSE }
+ggplot( data = host.type[ type == "total", ], aes( x = date, y = bw, colour = object ) ) +
+  geom_area( aes( colour = object, fill = object ), position = 'stack') +
+  xlab("") + ylab( "MB/s" ) + ggtitle( "Total Bandwidth of all hosts" ) +
   scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
-  theme( legend.title = element_blank(), legend.key.size = unit( 1, "lines" ) )
+  facet_grid( owner ~ ., scales = "free" ) + 
+  theme( legend.position = "none", strip.text.y = element_text(angle = 0) )
 ```
 
-Plot of the read and write bandwidth of all hosts.
 
-```{r echo = FALSE, message = FALSE }
+Plot of read and write bandwidth of all hosts.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 ggplot( data = host.type[ type == "read" | type == "write", ],
         aes( x = date, y = bw, colour = object ) ) +
-  geom_line() + xlab("") + ylab( "MB/s" ) + 
-  ggtitle( "Read and Write Bandwidth of all hosts" ) + 
+  geom_area( aes( colour = object, fill = object ), position = 'stack') + xlab("") +
+  ylab( "MB/s" ) + ggtitle( "Read and Write Bandwidth of all hosts" ) + 
   scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
-  facet_grid( ~ type, scales = "free" ) + 
-  theme( axis.text.x = element_text( angle = 90 ), 
-         legend.text = element_text( size = rel(0.5) ),
-         legend.title = element_blank(), legend.key.size = unit( 1, "lines" ) )
+  facet_grid( owner ~ type, scales = "free" ) + 
+  theme( axis.text.x = element_text( angle = 90 ), legend.position = "none", strip.text.y = element_text(angle = 0) )
 ```
 
 \newpage
 
 ### Hosts Read and Write Size
 
-The list of all hosts with stats of read and write sizes.
+The list of hosts stats of read and write sizes.
 
-```{r echo = FALSE, message = FALSE, results = 'asis' }
-host.sum <- host.sum[ order( host.sum$object, decreasing = FALSE ), ]
-pandoc.table( as.data.frame( host.sum[ stat == "95th", list( object, rsize, wsize ) ] ),
+```{r echo = FALSE, message = FALSE, results = 'asis', warning = FALSE }
+hds.sum <- hds.sum[ order( host.sum$object, decreasing = FALSE ), ]
+pandoc.table( as.data.frame( hds.sum[ stat == "95th", list( object, rsize, wsize ) ] ),
               caption="LUNs Read/Write Size by 95th percentile",
               justify = c( 'left', 'right', 'right' )
             )
 ```
 
-Plot of the read and write sizes of all hosts.
+Plot of read and write sizes of all hosts.
 
-```{r echo = FALSE, message = FALSE }
+```{r echo = FALSE, message = FALSE, warning = FALSE }
 ggplot( data = host.type[ type == "read" | type == "write" ],
         aes( x = date, y = size, colour = object ) ) +
   geom_line() + xlab("") + ylab( "Size, KB" ) +
-  ggtitle( "Read and Write Size of all hosts" ) +
+  ggtitle( "Read and Write Size of all LUNs on both SP" ) +
   scale_x_datetime( labels = date_format( "%m/%d %H:%m" ) ) +
-  facet_grid( ~ type, scales = "free" ) +
-  theme( axis.text.x = element_text( angle = 90 ), 
-         legend.text = element_text( size = rel(0.5) ),
-         legend.title = element_blank(), legend.key.size = unit( 1, "lines" ) )
+  facet_grid( owner ~ type, scales = "free" ) +
+  theme( axis.text.x = element_text( angle = 90 ), legend.position = "none", strip.text.y = element_text(angle = 0) )
 ```
 
 \newpage
@@ -705,31 +925,33 @@ ggplot( data = host.type[ type == "read" | type == "write" ],
 
 Relation of response time to throughput by queue length and utilization by 95th percentile.
 
-```{r echo = FALSE, message = FALSE }
-ggplot( data = host.sum[ stat == "95th", ], aes( iops, rt, label = object ) ) + 
+```{r echo = FALSE, message = FALSE, warning = FALSE }
+ggplot( data = hds.sum[ stat == "95th", ], aes( iops, rt, label = object ) ) + 
   geom_point( aes( size = ql, colour = util ) ) + 
-  geom_text( hjust = -0.2, vjust = -0.6, size = 3 ) +
+  geom_text( hjust = -0.1, vjust = -0.1, size = 3 ) +
   xlab( "IOPS" ) + ylab( "Response Time" ) +
   ggtitle( "Hosts: Response Time vs IOPS by QL and Utilization" ) + 
   scale_color_gradient( low = "green", high = "red" )
 ```
 
+
 Relation of bandwidth to throughput to by response time and utilization by 95th percentile.
 
-```{r echo = FALSE, message = FALSE }
-ggplot( data = host.sum[ stat == "95th", ], aes( iops, bw, label = object ) ) + 
+```{r echo = FALSE, message = FALSE, warning = FALSE }
+ggplot( data = hds.sum[ stat == "95th", ], aes( iops, bw, label = object ) ) + 
   geom_point( aes( size = rt, colour = util ) ) +
-  geom_text( hjust = -0.5, vjust = -0.5, size = 3 ) + xlab( "IOPS" ) + ylab( "MB/s" ) + 
+  geom_text( hjust = -0.1, vjust = -0.1, size = 3 ) + xlab( "IOPS" ) + ylab( "MB/s" ) + 
   ggtitle( "Hosts: Bandwidth vs IOPS by Response Time and Utilization" ) +
   scale_color_gradient( low = "green", high = "red" )
 ```
 
-Relation of write throughput to read throughput by response time and utilization by 95th percentile.
 
-```{r echo = FALSE, message = FALSE }
-ggplot( data = host.sum[ stat == "95th", ], aes( riops, wiops, label = object )) +
+Realtion of write throughput to read throughput by response time and utilization by 95th percentile.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE }
+ggplot( data = hds.sum[ stat == "95th", ], aes( riops, wiops, label = object )) +
   geom_point( aes( colour = util, size = rt ) ) +
-  geom_text( hjust = -0.5, vjust = -0.5, size = 3 ) + 
+  geom_text( hjust = -0.1, vjust = -0.1, size = 3 ) + 
   xlab( "Read IOPS" ) + ylab( "Write IOPS" ) + 
   ggtitle( "Hosts: Write IOPS vs Read IOPS by Utilization and Response Time" ) + 
   scale_color_gradient( low = "green", high = "red" )
