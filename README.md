@@ -16,18 +16,18 @@ Application is available here: (https://vzaigrin.shinyapps.io/NarReport/)
 ## Usage Instructions
 
 1. Generate csv file from nar files by this command:
-```
-naviseccli analyzer -archivedump -data file1.nar ... filen.nar  -object s,p,al,d -format on,pt,oan,co,u,tt,rio,wio,tb,rb,wb,rs,ws,rt,st,ql  -join -overwrite y -out nar.csv
-```
+   ```
+  naviseccli analyzer -archivedump -data file1.nar ... filen.nar  -object s,p,al,d -format on,pt,oan,co,u,tt,rio,wio,tb,rb,wb,rs,ws,rt,st,ql  -join -overwrite y -out nar.csv
+  ```
 2. Upload csv file.
 3. Generate configuration file by this command:
-```
-naviseccli analyzer -archivedump -config filen.nar -xml -overwrite y -out config.xml
-```
+   ```
+   naviseccli analyzer -archivedump -config filen.nar -xml -overwrite y -out config.xml
+   ```
 4. Upload configuration file
 5. Generate relations file by this command:
-```
-naviseccli analyzer -archivedump -rel filen.nar -xml -overwrite y -out rel.xml
-```
+   ```
+   naviseccli analyzer -archivedump -rel filen.nar -xml -overwrite y -out rel.xml
+   ```
 6. Upload relations file
 7. See charts and tables.
