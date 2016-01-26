@@ -785,16 +785,21 @@ for (x in levels(as.factor(lun.pool.host$host)))  {
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE }
 host.data <- data[ grepl( "([[:print:]]+) \\[([0-9]+);", object ), ]
-host.data$lun <-  str_replace_all( host.data$object, "([[:print:]]+) \\[([0-9]+); ([[:print:]]+)", "\\2" )
-host.data$lun.name <- str_replace_all( host.data$object, "([[:print:]]+) \\[([0-9]+); ([[:print:]]+)", "\\1" )
-host.data <- rbindlist( lapply( levels(as.factor(lun.hosts$host)),
-                                function(x) cbind(host.data[ lun %in% lun.hosts[ host == x, lun]], host=x) ) )
+host.data$lun <-  str_replace_all( host.data$object,
+                                 "([[:print:]]+) \\[([0-9]+); ([[:print:]]+)","\\2" )
+host.data$lun.name <- str_replace_all( host.data$object,
+                                    "([[:print:]]+) \\[([0-9]+); ([[:print:]]+)","\\1" )
+host.data$object <- str_replace_all( host.data$object,
+                                     "([[:print:]]+) \\[([0-9]+); ([[:print:]]+)\\]",
+                                     "\\3" )
+host.data$object <- str_replace_all( host.data$object,"RAID ([0-9_]+)", "" )
+host.data$object <- str_replace_all( host.data$object,"^; ", "" )
+host.data <- host.data[ object != "", ]
+host.data$owner <- host.data$object
 host.data$object <- host.data$lun
 host.data$name <- host.data$lun.name
-host.data$owner <- host.data$host
 host.data$lun <- NULL
 host.data$lun.name <- NULL
-host.data$host <- NULL
 
 host.sum <- data2sum( host.data )
 host.type <- data2type( host.data )

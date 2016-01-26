@@ -6,6 +6,7 @@ library("ggplot2")
 library("grid")
 library("scales")
 library("XML")
+library("DiagrammeR")
 
 data2sum <- function( dt ) {
   
@@ -432,7 +433,7 @@ shinyServer( function(input, output, session) {
   )
   
   output$sp.util <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = sp.data(), aes( x = date, y = util, colour = object ) ) +
       geom_line() + xlab("") + ylab( "Utilization %" ) +
       ggtitle( "Utilization on SPA and SPB with 95th percentile" ) + 
@@ -445,7 +446,7 @@ shinyServer( function(input, output, session) {
   })
   
   output$sp.tt <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = sp.type()[ type == "total", ], aes( x = date, y = iops ) ) +
       geom_area ( aes( colour = object, fill = object ), position = 'stack' ) +
       xlab("") + ylab( "IOPS" ) +
@@ -459,7 +460,7 @@ shinyServer( function(input, output, session) {
   })
   
   output$sp.trw <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = sp.type(), aes( x = date, y = iops, colour = type ) ) +
       geom_line() + xlab("") + ylab( "IOPS" ) +
       ggtitle( "Total, Read and Write Throughput on both SP" ) +
@@ -471,7 +472,7 @@ shinyServer( function(input, output, session) {
   })
   
   output$sp.bt <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = sp.type()[ type == "total", ], aes( x = date, y = bw ) ) +
       geom_area( aes( colour = object, fill = object ), position = 'stack' ) +
       xlab("") + ylab( "MB/s" ) +
@@ -485,7 +486,7 @@ shinyServer( function(input, output, session) {
   })  
   
   output$sp.brw <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = sp.type(), aes( x = date, y = bw, colour = type ) ) +
       geom_line() + xlab("") + ylab( "MB/s" ) + 
       ggtitle( "Total, Read and Write Bandwidth on both SP" ) + 
@@ -496,7 +497,7 @@ shinyServer( function(input, output, session) {
   })
   
   output$sp.srw <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = sp.type()[ type == "read" | type == "write" ],
             aes( x = date, y = size, colour = type ) ) +
       geom_line() + xlab("") + ylab( "Size, KB" ) + 
@@ -507,7 +508,7 @@ shinyServer( function(input, output, session) {
   })
 
   output$port.tt <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = port.type()[ type == "total", ], aes( x = date, y = iops ) ) +
       geom_area ( aes( colour = object, fill = object ), position = 'stack' ) +
       xlab("") + ylab( "IOPS" ) +
@@ -518,7 +519,7 @@ shinyServer( function(input, output, session) {
   })
   
   output$port.trw <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = port.type(), aes( x = date, y = iops, colour = type ) ) +
       geom_line() + xlab("") + ylab( "IOPS" ) +
       ggtitle( "Total, Read and Write Throughput on front-end ports" ) +
@@ -529,7 +530,7 @@ shinyServer( function(input, output, session) {
   })
   
   output$port.bt <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = port.type()[ type == "total", ], aes( x = date, y = bw ) ) +
       geom_area( aes( colour = object, fill = object ), position = 'stack' ) +
       xlab("") + ylab( "MB/s" ) +
@@ -540,7 +541,7 @@ shinyServer( function(input, output, session) {
   })  
   
   output$port.brw <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = port.type(), aes( x = date, y = bw, colour = type ) ) +
       geom_line() + xlab("") + ylab( "MB/s" ) + 
       ggtitle( "Total, Read and Write Bandwidth on front-end port" ) + 
@@ -551,7 +552,7 @@ shinyServer( function(input, output, session) {
   })
   
   output$port.srw <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = port.type()[ type == "read" | type == "write" ],
             aes( x = date, y = size, colour = type ) ) +
       geom_line() + xlab("") + ylab( "Size, KB" ) + 
@@ -562,7 +563,7 @@ shinyServer( function(input, output, session) {
   })
   
   output$lun.hist <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ls <- lun.sum()[ stat == "95th", ]
     ls <- ls[ order( ls$iops, decreasing = TRUE ), ]
     ls$n <- c( 1 : dim(ls)[1] )
@@ -576,7 +577,7 @@ shinyServer( function(input, output, session) {
   })
 
   output$lun.tt <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = lun.type()[ type == "total", ], aes( x = date, y = iops, colour = object ) ) +
       geom_area( aes( colour = object, fill = object ), position = 'stack') +
       xlab("") + ylab( "IOPS" ) + ggtitle( "Total Throughput of all LUNs" ) + 
@@ -586,7 +587,7 @@ shinyServer( function(input, output, session) {
   })
   
   output$lun.trw <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = lun.type()[ type == "read" | type == "write", ], aes( x = date, y = iops, colour = object ) ) +
       geom_line() + xlab("") + ylab( "IOPS" ) +
       ggtitle( "Read and Write Throughput of all LUNs" ) + 
@@ -596,7 +597,7 @@ shinyServer( function(input, output, session) {
   })  
   
   output$lun.bt <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = lun.type()[ type == "total", ], aes( x = date, y = bw, colour = object ) ) +
       geom_area( aes( colour = object, fill = object ), position = 'stack') +
       xlab("") + ylab( "MB/s" ) + ggtitle( "Total Bandwidth of all LUNs" ) +
@@ -606,7 +607,7 @@ shinyServer( function(input, output, session) {
   })  
   
   output$lun.brw <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = lun.type()[ type == "read" | type == "write", ], aes( x = date, y = bw, colour = object ) ) +
       geom_area( aes( colour = object, fill = object ), position = 'stack') + xlab("") +
       ylab( "MB/s" ) + ggtitle( "Read and Write Bandwidth of all LUNs on SP A and SP B" ) + 
@@ -616,7 +617,7 @@ shinyServer( function(input, output, session) {
   })
   
   output$lun.srw <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = lun.type()[ type == "read" | type == "write", ], aes( x = date, y = size, colour = object ) ) +
       geom_line() + xlab("") + ylab( "Size, KB" ) +
       ggtitle( "Read and Write Size of all LUNs on both SP" ) +
@@ -626,7 +627,7 @@ shinyServer( function(input, output, session) {
   })  
 
   dhm <- reactive({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     dhm <- disk.sum()[ stat == "95th", .( object, owner, util ) ]
     dhm$dae <- str_replace_all( dhm$object, "([0-9]+)_([0-9]+)_([0-9]+)", "\\1_\\2" )
     dhm$disk <- as.numeric( str_replace_all( dhm$object, "([0-9]+)_([0-9]+)_([0-9]+)", "\\3" ) )
@@ -634,7 +635,7 @@ shinyServer( function(input, output, session) {
   })
     
   output$disk.heat <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     dhm <- disk.sum()[ stat == "95th", .( object, owner, util ) ]
     dhm$dae <- str_replace_all( dhm$object, "([0-9]+)_([0-9]+)_([0-9]+)", "\\1_\\2" )
     dhm$disk <- as.numeric( str_replace_all( dhm$object, "([0-9]+)_([0-9]+)_([0-9]+)", "\\3" ) )
@@ -648,7 +649,7 @@ shinyServer( function(input, output, session) {
   })
 
   output$disk.tt <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = disk.type()[ type == "total", ], aes( x = date, y = iops, colour = object ) ) +
       geom_line() + xlab("") + ylab( "IOPS" ) +
       ggtitle( "Total Throughput of all Disks by Buses" ) + 
@@ -658,7 +659,7 @@ shinyServer( function(input, output, session) {
   })
   
   output$disk.trw <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = disk.type()[ type == "read" | type == "write", ],
             aes( x = date, y = iops, colour = object ) ) + geom_line() +
       xlab("") + ylab( "IOPS" ) + 
@@ -669,7 +670,7 @@ shinyServer( function(input, output, session) {
   })  
 
   output$disk.bt <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = disk.type()[ type == "total", ], aes( x = date, y = bw ) ) +
       geom_area( aes( colour = object ), position = 'stack') +
       xlab("") + ylab( "MB/s" ) + ggtitle( "Total Bandwidth of all Disks by Buses" ) +
@@ -679,7 +680,7 @@ shinyServer( function(input, output, session) {
   })
   
   output$disk.brw <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = disk.type()[ type == "read" | type == "write", ],
             aes( x = date, y = bw, colour = object ) ) +
       geom_line() +
@@ -691,7 +692,7 @@ shinyServer( function(input, output, session) {
   })  
 
   output$host.hist <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     hs <- hds.sum()[ stat == "95th", ]
     hs <- hs[ order( hs$iops, decreasing = TRUE ), ]
     hs$n <- c( 1 : dim(hs)[1] )
@@ -705,7 +706,7 @@ shinyServer( function(input, output, session) {
   })    
 
   output$host.tt <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = host.type()[ type == "total", ], aes( x = date, y = iops, colour = object ) ) +
       geom_area( aes( colour = object, fill = object ), position = 'stack') +
       xlab("") + ylab( "IOPS" ) + ggtitle( "Total Throughput of all hosts" ) + 
@@ -715,7 +716,7 @@ shinyServer( function(input, output, session) {
   })
 
   output$host.trw <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = host.type()[ type == "read" | type == "write", ],
             aes( x = date, y = iops, colour = object ) ) +
       geom_area( aes( colour = object, fill = object ), position = 'stack') +
@@ -726,7 +727,7 @@ shinyServer( function(input, output, session) {
   })  
 
   output$host.bt <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = host.type()[ type == "total", ], aes( x = date, y = bw, colour = object ) ) +
       geom_area( aes( colour = object, fill = object ), position = 'stack') +
       xlab("") + ylab( "MB/s" ) + ggtitle( "Total Bandwidth of all hosts" ) +
@@ -736,7 +737,7 @@ shinyServer( function(input, output, session) {
   })
   
   output$host.brw <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = host.type()[ type == "read" | type == "write", ],
             aes( x = date, y = bw, colour = object ) ) +
       geom_area( aes( colour = object, fill = object ), position = 'stack') + xlab("") +
@@ -747,7 +748,7 @@ shinyServer( function(input, output, session) {
   })
   
   output$host.srw <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = host.type()[ type == "read" | type == "write" ],
             aes( x = date, y = size, colour = object ) ) +
       geom_line() + xlab("") + ylab( "Size, KB" ) +
@@ -758,7 +759,7 @@ shinyServer( function(input, output, session) {
   })  
   
   output$summary <- renderDataTable({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     switch( input$summary.component,
             "1" = sp.sum(),
             "2" = port.sum(),
@@ -769,7 +770,7 @@ shinyServer( function(input, output, session) {
   }) 
   
   output$lun.config <- renderDataTable({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     switch( input$conf.component,
             "1" = lun.pool.host()[ host == input$conf.element, ],
             "2" = lun.pool.host()[ name == input$conf.element, ],
@@ -779,26 +780,26 @@ shinyServer( function(input, output, session) {
   })
   
   output$pool.config <- renderDataTable({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
+    disk.config <- as.data.table( cbind(
+      xpathSApply( config.doc(), "//object[@type='Disk']//value[@type='Name']", xmlValue ),
+      xpathSApply( config.doc(), "//object[@type='Disk']//value[@type='Drive Type']", xmlValue )
+    ))
+    names(disk.config) <- c("name","type")
+    disk.config$object <- str_replace_all( disk.config$name, "Bus ([0-9]) Enclosure ([0-9]) Disk ([0-9]+)", "\\1_\\2_\\3" )
+    disk.config$name <- NULL
+    setnames( disk.config, c("type", "disk") )
+    dp <- merge( disk.pools(), disk.config, by = "disk" )
     switch( input$conf.component,
-            "1" = disk.pools()[ pool %in% lun.pool.host()[ host == input$conf.element, ]$pool, ],
-            "2" = disk.pools()[ pool %in% lun.pool.host()[ name == input$conf.element, ]$pool, ],
-            "3" = disk.pools()[ pool == input$conf.element, ],
-            "4" = disk.pools()[ disk == input$conf.element, ]
+            "1" = dp[ pool %in% lun.pool.host()[ host == input$conf.element, ]$pool, ],
+            "2" = dp[ pool %in% lun.pool.host()[ name == input$conf.element, ]$pool, ],
+            "3" = dp[ pool == input$conf.element, ],
+            "4" = dp[ disk == input$conf.element, ]
     )
   })
   
-  output$pool.disk <- renderDataTable({
-    if( is.null(input$file1) )  return(NULL)
-    disk.pools <- disk.owners()
-    disk.pools$disk <- NULL
-    disk.pools$name <- NULL
-    setnames( disk.pools, c( "pool", "disk" ) )
-    disk.pools
-  })
-  
   rel.data <- reactive({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     dt <- switch( input$rel.component,
                    "1" = sp.sum()[ stat == "95th", ],
                    "3" = lun.sum()[ stat == "95th", ],
@@ -809,22 +810,84 @@ shinyServer( function(input, output, session) {
   })
 
   output$rel.plot <- renderPlot({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     ggplot( data = rel.data(), aes_string( x = input$rel.x, y = input$rel.y ) ) + 
       geom_point( aes_string( size = input$rel.size, colour = input$rel.colour ) ) + 
       scale_color_gradient( low = "green", high = "red" )
   })
   
   output$rel.info <- renderPrint({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     brushedPoints( as.data.frame( rel.data() ), input$rel.brush )
   })
 
   output$dhm.clickinfo <- renderPrint({
-    if( is.null(input$file1) )  return(NULL)
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
     disk.sum()[ object == dhm()[ dae == levels(as.factor(dhm()$dae))[as.integer(input$dhm.click$y+0.5)] &
                                  disk == as.integer(input$dhm.click$x+0.5), object ], ]
   })
   
+  output$diagram <- renderGrViz({
+    if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
+    rd <- rel.doc()
+    lun.hosts <- rbindlist( lapply( c(
+      xpathSApply( rd, "//object[@type='SP']//object[@type='Public RaidGroup LUN']", xmlGetAttr, 'name' ),
+      xpathSApply( rd, "//object[@type='SP']//object[@type='Pool Public LUN']", xmlGetAttr, 'name' )),
+      function(x) data.table(
+        lun = x,
+        host = xpathSApply( rd,
+                            paste( "//object[@type='SP']//object[@name='",x,"']/object[@type='Host']", sep="" ),
+                            xmlGetAttr, 'name' )
+      )
+    ))
+    lun.hosts <- lun.hosts[ host != 'NULL', ]
+    lun.hosts$lun.name <- str_replace_all( lun.hosts$lun, "([[:print:]]+) \\[([0-9]+)([[:print:]]+)","\\1" )
+    lun.hosts$lun <- str_replace_all( lun.hosts$lun, "([[:print:]]+) \\[([0-9]+)([[:print:]]+)","\\2" )
+    lun.hosts$host <- unlist(lun.hosts$host)
+    setnames(lun.hosts, c("lun", "host", "name"))
+    
+    lun.pools <- rbindlist( lapply( c(
+      xpathSApply( rd, "//object[@type='RAID Group']", xmlGetAttr, 'name' ),
+      xpathSApply( rd, "//object[@type='Pool']", xmlGetAttr, 'name' ) ),
+      function(x) data.table( lun = xpathSApply( rd,
+                                                 paste("//object[@name='",x,"']/object[@type='Pool Public LUN' or
+                                                       @type='Public RaidGroup LUN' or
+                                                       @type='Private RaidGroup LUN']",
+                                                       sep="" ),
+                                                 xmlGetAttr, 'name' ),
+                              owner = x )
+    ))
+    
+    lun.pools$name <- str_replace_all( lun.pools$lun, "([[:print:]]+) \\[([0-9]+)([[:print:]]+)", "\\1" )
+    lun.pools$object <- str_replace_all( lun.pools$lun, "([[:print:]]+) \\[([0-9]+)([[:print:]]+)", "\\2" )
+    lun.pools$owner <- str_replace_all( lun.pools$owner, "(Raid Group) ([0-9]+)", "RG \\2" )
+    lun.pools$lun <- NULL
+    setnames(lun.pools,c("pool","name","lun"))
+    
+    disk.pools <- rbindlist( lapply( c(
+      xpathSApply( rd, "//object[@type='RAID Group']",xmlGetAttr,'name' ),
+      xpathSApply( rd, "//object[@type='Pool']",xmlGetAttr,'name' ) ),
+      function(x) data.table( name = xpathSApply( rd,
+                                                  paste("//object[@name='",x,"']/object[@type='Disk']", sep=""),
+                                                  xmlGetAttr, 'name' ),
+                              owner = x )
+    ))
+    disk.pools$object <- str_replace_all( disk.pools$name, "Bus ([0-9]) Enclosure ([0-9]) Disk ([0-9]+)", "\\1_\\2_\\3" )
+    disk.pools$owner <- str_replace_all( disk.pools$owner, "(Raid Group) ([0-9]+)", "RG \\2" )
+    disk.pools$name <- NULL
+    setnames(disk.pools,c("pool","disk"))
+    
+    host_nodes <- create_nodes( nodes = lun.hosts$host, shape = "square", style = "filled",color = "ForestGreen" )
+    lun_nodes <- create_nodes( nodes = lun.pools$lun, style = "filled",color = "SteelBlue" )
+    pool_nodes <- create_nodes( nodes = lun.pools$pool, shape = "square", style = "filled",color = "SlateGray" )
+    disk_nodes <- create_nodes( nodes = disk.pools$disk, style = "filled",color = "DarkGoldenrod" )
+    all_nodes <- combine_nodes( host_nodes, lun_nodes, pool_nodes, disk_nodes )
+    hl_edges <- create_edges( from = lun.hosts$host, to = lun.hosts$lun, dir = "none" )
+    lp_edges <- create_edges( from =lun.pools$lun, to = lun.pools$pool, dir = "none" )
+    pd_edges <- create_edges( from = disk.pools$pool, to = disk.pools$disk, dir = "none" )
+    all_edges <- combine_edges( hl_edges, lp_edges, pd_edges )
+    graph <- create_graph( nodes_df = all_nodes, edges_df = all_edges, graph_attrs = "rankdir = LR" )
+    render_graph( graph, width = 1000, height = 20000 )
+  })  
   
 })

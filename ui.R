@@ -1,5 +1,6 @@
 library(shiny)
 library(shinydashboard)
+library(DiagrammeR)
 
 options( shiny.maxRequestSize = 500*1024^2 )
 
@@ -10,7 +11,9 @@ dashboardPage(
       menuItem( "Inputs", tabName = "load", icon = icon("folder-open") ),
       dateRangeInput( 'dateRange', label = 'Select date range:', format = "mm/dd/yyyy" ),
       hr(),
-      menuItem("Configuration", tabName = "configuration", icon = icon("gears") ),
+      h5("Configuration"),
+      menuItem("Diagram", tabName = "diagram", icon = icon("image") ),
+      menuItem("Data", tabName = "configuration", icon = icon("gears") ),
       hr(),
       menuItem("SP", tabName = "sp", icon = icon("area-chart") ),
       menuItem("Ports", tabName = "port", icon = icon("area-chart") ),
@@ -74,6 +77,13 @@ dashboardPage(
           box( title = "Results", status = "success", solidHeader = TRUE, uiOutput("ui")
           )
         )
+      ),
+      tabItem( tabName = "diagram",
+               fluidRow(
+                 box( title = "Diagram", status = "primary", width = 12, height = 20100, solidHeader = TRUE,
+                      grVizOutput('diagram', width = "100%", height = 20000 )
+                 )
+               )
       ),
       tabItem( tabName = "configuration",
                fluidRow(
