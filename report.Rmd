@@ -136,7 +136,13 @@ Data taken from **`r head( rawdata$Poll.Time, 1 )`** to **`r tail( rawdata$Poll.
 ```{r echo = FALSE, message = FALSE, warning = FALSE }
 sp.data <- data[ object == "SP A" | object == "SP B", ]
 sp.data$name <- sp.data$object
-sp.sum <- data2sum( sp.data )
+sp.plus <- sp.data[, list( mean(util), sum(iops), sum(riops), sum(wiops), sum(bw), sum(rbw), sum(wbw), mean(rsize), mean(wsize), mean(rt), mean(st), mean(ql) ), by = list( date ) ]
+setnames( sp.plus, c( "date", "util", "iops", "riops", "wiops", "bw", "rbw", "wbw", "rsize", "wsize", "rt", "st", "ql") )
+sp.plus$object <- "SPA+SPB"
+sp.plus$name <- "SPA+SPB"
+sp.plus$owner <- ""
+sp.plus <- rbind( sp.data, sp.plus )
+sp.sum <- data2sum( sp.plus )
 sp.type <- data2type( sp.data )
 ```
 
@@ -415,6 +421,31 @@ lun.data <- lun.data[ !is.na(date), ]
 
 lun.sum <- data2sum( lun.data )
 lun.type <- data2type( lun.data )
+
+pools.data <- lun.data[, list( mean(util), sum(iops), sum(riops), sum(wiops),
+                               sum(bw), sum(rbw), sum(wbw), mean(rsize), mean(wsize),
+                               mean(rt), mean(st), mean(ql) ), by = list( owner, date ) ]
+setnames( pools.data, c( "object", "date", "util", "iops", "riops", "wiops",
+                         "bw", "rbw", "wbw", "rsize", "wsize", "rt", "st", "ql") )
+pools.data$name <- pools.data$object
+pools.data$owner <- ""
+pools.sum <- data2sum( pools.data )
+pools.type <- data2type( pools.data )
+```
+
+### Summary of Pools and RAID Groups performance
+
+The list of all Pools and RAID Groups with 95th percentile of IOPS, bandwidth, utilization, response time, queue length and %IOPS, sorted by IOPS.
+
+```{r echo = FALSE, message = FALSE, results = 'asis', warning = FALSE }
+ps <- pools.sum[ stat == "95th", ]
+ps <- ps[ order( ps$iops, decreasing = TRUE ), ]
+ps.sum <- sum(ps$iops)
+ps$piops <- round((ps$iops/ps.sum)*100,2)
+pandoc.table( as.data.frame( ps[, list( name, iops, bw, util, rt, ql, piops ) ] ),
+              caption = "Summary LUNs performance",
+              justify = c( 'left', 'right', 'right', 'right', 'right', 'right', 'right' )
+            )
 ```
 
 ### Summary of LUNs performance
@@ -618,13 +649,32 @@ disk.type <- data2type( disk.data )
 
 ### Summary of disks performance
 
+The summary of all disks types with 95th percentile of IOPS, bandwidth, utilization, service time, queue length and % IOPS, sorted by IOPS.
+
+```{r echo = FALSE, message = FALSE, results = 'asis', warning = FALSE }
+dbytype <- disk.data[, list( mean(util), sum(iops), sum(riops), sum(wiops), sum(bw), sum(rbw), sum(wbw), mean(rsize),
+                             mean(wsize), mean(rt), mean(st), mean(ql) ), by = list( type, date ) ]
+setnames( dbytype, c( "object", "date", "util", "iops", "riops", "wiops", "bw", "rbw", "wbw", "rsize", "wsize",
+                      "rt", "st", "ql") )
+dbytype$owner <- ""
+dbytype$name <- dbytype$object
+dbytype.sum <- data2sum( dbytype )
+dts <- dbytype.sum[ stat == "95th", ]
+dts <- dts[ order( dts$iops, decreasing = TRUE ), ]
+dts.sum <- sum(dts$iops)
+dts$piops <- round( (dts$iops/dts.sum)*100, 2 )
+pandoc.table( as.data.frame( dts[, list( name, iops, util, bw, st, ql, piops ) ]),
+              caption = "Summary Disks performance",
+              justify = c( 'left', 'right', 'right', 'right', 'right', 'right', 'right' ) )
+```
+
 The list of all disks with 95th percentile of IOPS, bandwidth, utilization, service time and queue length, sorted by IOPS.
 
 ```{r echo = FALSE, message = FALSE, results = 'asis', warning = FALSE }
 ds <- disk.sum[ stat == "95th", ]
 ds <- ds[ order( ds$iops, decreasing = TRUE ), ]
 ds$type <- ds$name
-pandoc.table( as.data.frame( ds[, list( object, type, owner, util, iops, bw, st, ql ) ]),
+pandoc.table( as.data.frame( ds[, list( object, type, owner, iops, util, bw, st, ql ) ]),
               caption = "Summary Disks performance",
               justify = c( 'left', 'left', 'left', 'right', 'right', 'right', 'right', 'right' ) )
 ```
