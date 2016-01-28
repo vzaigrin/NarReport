@@ -443,7 +443,7 @@ ps <- ps[ order( ps$iops, decreasing = TRUE ), ]
 ps.sum <- sum(ps$iops)
 ps$piops <- round((ps$iops/ps.sum)*100,2)
 pandoc.table( as.data.frame( ps[, list( name, iops, bw, util, rt, ql, piops ) ] ),
-              caption = "Summary LUNs performance",
+              caption = "Summary of Pools and RAID Groups performance",
               justify = c( 'left', 'right', 'right', 'right', 'right', 'right', 'right' )
             )
 ```
@@ -456,7 +456,7 @@ The list of all LUNs with 95th percentile of IOPS, bandwidth, utilization, respo
 ls <- lun.sum[ stat == "95th", ]
 ls <- ls[ order( ls$iops, decreasing = TRUE ), ]
 pandoc.table( as.data.frame( ls[, list( object, name, owner, iops, bw, util, rt, ql ) ] ),
-              caption = "Summary LUNs performance",
+              caption = "Summary of LUNs performance",
               justify = c( 'left', 'left', 'left', 'right', 'right', 'right', 'right', 'right' )
             )
 ```
