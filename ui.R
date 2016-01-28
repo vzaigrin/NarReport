@@ -10,11 +10,10 @@ dashboardPage(
     sidebarMenu(
       menuItem( "Inputs", tabName = "load", icon = icon("folder-open") ),
       dateRangeInput( 'dateRange', label = 'Select date range:', format = "mm/dd/yyyy" ),
-      hr(),
-      h5("Configuration"),
+      hr(), h5("Configuration"),
       menuItem("Diagram", tabName = "diagram", icon = icon("image") ),
       menuItem("Data", tabName = "configuration", icon = icon("gears") ),
-      hr(),
+      hr(), h5("Plots"),
       menuItem("SP", tabName = "sp", icon = icon("area-chart") ),
       menuItem("Ports", tabName = "port", icon = icon("area-chart") ),
       menuItem("LUNs", tabName = "lun", icon = icon("area-chart") ),
