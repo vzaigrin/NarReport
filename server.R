@@ -372,35 +372,34 @@ shinyServer( function(input, output, session) {
   })
   
   host.data <- reactive({
-    if( is.null(input$file1) | is.null(input$file3) )  return(NULL)
-    host.data <- data()[ grepl( "([[:print:]]+) \\[([0-9]+);", object ), ]
-    host.data$lun <- str_replace_all( host.data$object, "([[:print:]]+) \\[([0-9]+); ([[:print:]]+)", "\\2" )
-    host.data$lun.name <- str_replace_all( host.data$object, "([[:print:]]+) \\[([0-9]+); ([[:print:]]+)", "\\1" )
-    host.data <- rbindlist( lapply( levels(as.factor(lun.hosts()$host)),
-                                    function(x) cbind(host.data[ lun %in% lun.hosts()[ host == x, lun]], host=x) ) )
+    if( is.null(input$file1) )  return(NULL)
+    host.data <- lun.data()
+    host.data$object <- str_replace_all( host.data$lun, "([[:print:]]+) \\[([0-9]+); ([[:print:]]+)\\]", "\\3" )
+    host.data$object <- str_replace_all( host.data$object,"RAID ([0-9_]+)", "" )
+    host.data$object <- str_replace_all( host.data$object,"^; ", "" )
+    host.data <- host.data[ object != "", ]
+    host.data$owner <- host.data$object
     host.data$object <- host.data$lun
-    host.data$name <- host.data$lun.name
-    host.data$owner <- host.data$host
     host.data$lun <- NULL
-    host.data$lun.name <- NULL
-    host.data$host <- NULL
+    host.data$sp <- NULL
+    host.data$object <- str_replace_all( host.data$object, "([[:print:]]+) \\[([0-9]+); ([[:print:]]+)","\\2" )
     return(host.data)
   })
   
   host.sum <- reactive({
-    if( is.null(input$file1) | is.null(input$file3) )  return(NULL)
+    if( is.null(input$file1) )  return(NULL)
     host.sum <- data2sum( host.data() )
     return(host.sum)
   })
   
   host.type <- reactive({
-    if( is.null(input$file1) | is.null(input$file3) )  return(NULL)
+    if( is.null(input$file1) )  return(NULL)
     host.type <- data2type( host.data() )
     return(host.type)
   })
   
   hds.sum <- reactive({
-    if( is.null(input$file1) | is.null(input$file3) )  return(NULL)
+    if( is.null(input$file1) )  return(NULL)
     hds <- host.data()[, list( mean(util), sum(iops), sum(riops), sum(wiops),
                                sum(bw), sum(rbw), sum(wbw), mean(rsize), mean(wsize),
                                mean(rt), mean(st), mean(ql) ), by = list( owner, date ) ]
@@ -631,20 +630,17 @@ shinyServer( function(input, output, session) {
     dhm <- disk.sum()[ stat == "95th", .( object, owner, util ) ]
     dhm$dae <- str_replace_all( dhm$object, "([0-9]+)_([0-9]+)_([0-9]+)", "\\1_\\2" )
     dhm$disk <- as.numeric( str_replace_all( dhm$object, "([0-9]+)_([0-9]+)_([0-9]+)", "\\3" ) )
+    dhm[ is.na(dhm$owner), ]$owner <- ""
     return(dhm)
   })
     
   output$disk.heat <- renderPlot({
     if( is.null(input$file1) | is.null(input$file2) | is.null(input$file3) )  return(NULL)
-    dhm <- disk.sum()[ stat == "95th", .( object, owner, util ) ]
-    dhm$dae <- str_replace_all( dhm$object, "([0-9]+)_([0-9]+)_([0-9]+)", "\\1_\\2" )
-    dhm$disk <- as.numeric( str_replace_all( dhm$object, "([0-9]+)_([0-9]+)_([0-9]+)", "\\3" ) )
-    dhm[ is.na(dhm$owner), ]$owner <- ""
-    ggplot( data = dhm, aes( disk, dae ) ) + geom_tile( aes( fill = util ), colour = "black" ) +
+    ggplot( data = dhm(), aes( disk, dae ) ) + geom_tile( aes( fill = util ), colour = "black" ) +
       scale_fill_gradient( low = "green", high = "red", limits=c( 0, 100 ) ) + 
       xlab( "Disk" ) + ylab( "DAE" ) +
       ggtitle( "Disks Utilization Hetamap by 95th percentile" ) +
-      scale_x_discrete( limits = c( 0 : max( dhm$disk ) ) ) +
+      scale_x_discrete( limits = c( 0 : max( dhm()$disk ) ) ) +
       theme_classic() + theme( legend.title = element_blank() ) + geom_text( aes( label = owner ), size = 2.8 )
   })
 

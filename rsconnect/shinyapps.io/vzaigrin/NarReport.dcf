@@ -1,8 +1,8 @@
 name: NarReport
 account: vzaigrin
 server: shinyapps.io
-bundleId: 359324
+bundleId: 362079
 url: https://vzaigrin.shinyapps.io/NarReport/
-when: 1453842104.82872
+when: 1454170894.13384
 asMultiple: FALSE
 asStatic: FALSE

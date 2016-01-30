@@ -392,16 +392,15 @@ ggplot( data = port.type[ type == "read" | type == "write" ],
 lun.data <- data[ grepl( "([[:print:]]+) \\[([0-9]+);", object ), ]
 lun.data$name <- str_replace_all( lun.data$object, "([[:print:]]+) \\[([0-9]+)([[:print:]]+)","\\1" )
 lun.data$object <- str_replace_all( lun.data$object, "([[:print:]]+) \\[([0-9]+)([[:print:]]+)","\\2" )
-lun.data$sp <- paste( "SP", lun.data$owner, sep = "" )
+lun.data$sp <- paste0( "SP", lun.data$owner )
 
 lun.owners <- rbindlist( lapply( c(
   xpathSApply( rel.doc, "//object[@type='RAID Group']", xmlGetAttr, 'name' ),
   xpathSApply( rel.doc, "//object[@type='Pool']", xmlGetAttr, 'name' ) ),
   function(x) data.table( lun = xpathSApply( rel.doc,
-                                             paste("//object[@name='",x,"']/object[@type='Pool Public LUN' or
-                                                   @type='Public RaidGroup LUN' or
-                                                   @type='Private RaidGroup LUN']",
-                                                   sep=""),
+                                             paste0( "//object[@name='", x, "']/object[@type='Pool Public LUN' or
+                                                     @type='Public RaidGroup LUN' or
+                                                     @type='Private RaidGroup LUN']" ),
                                              xmlGetAttr, 'name' ),
                           owner = x )
 ))
@@ -621,7 +620,7 @@ disk.owners <- rbindlist( lapply( c(
               xpathSApply( rel.doc, "//object[@type='RAID Group']",xmlGetAttr,'name' ),
               xpathSApply( rel.doc, "//object[@type='Pool']",xmlGetAttr,'name' ) ),
               function(x) data.table( disk = xpathSApply( rel.doc,
-                                                          paste("//object[@name='",x,"']/object[@type='Disk']", sep=""),
+                                                          paste0( "//object[@name='", x, "']/object[@type='Disk']" ),
                                                           xmlGetAttr, 'name' ),
                                       owner = x )
             ))
@@ -805,7 +804,7 @@ lun.hosts <- rbindlist( lapply( c(
                function(x) data.table(
                  lun = x,
                  host = xpathSApply( rel.doc,
-                                     paste( "//object[@type='SP']//object[@name='",x,"']/object[@type='Host']", sep="" ),
+                                     paste0( "//object[@type='SP']//object[@name='", x, "']/object[@type='Host']" ),
                                      xmlGetAttr, 'name' )
                )
              ))
@@ -835,13 +834,9 @@ for (x in levels(as.factor(lun.pool.host$host)))  {
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE }
 host.data <- data[ grepl( "([[:print:]]+) \\[([0-9]+);", object ), ]
-host.data$lun <-  str_replace_all( host.data$object,
-                                 "([[:print:]]+) \\[([0-9]+); ([[:print:]]+)","\\2" )
-host.data$lun.name <- str_replace_all( host.data$object,
-                                    "([[:print:]]+) \\[([0-9]+); ([[:print:]]+)","\\1" )
-host.data$object <- str_replace_all( host.data$object,
-                                     "([[:print:]]+) \\[([0-9]+); ([[:print:]]+)\\]",
-                                     "\\3" )
+host.data$lun <-  str_replace_all( host.data$object, "([[:print:]]+) \\[([0-9]+); ([[:print:]]+)","\\2" )
+host.data$lun.name <- str_replace_all( host.data$object, "([[:print:]]+) \\[([0-9]+); ([[:print:]]+)","\\1" )
+host.data$object <- str_replace_all( host.data$object, "([[:print:]]+) \\[([0-9]+); ([[:print:]]+)\\]", "\\3" )
 host.data$object <- str_replace_all( host.data$object,"RAID ([0-9_]+)", "" )
 host.data$object <- str_replace_all( host.data$object,"^; ", "" )
 host.data <- host.data[ object != "", ]
