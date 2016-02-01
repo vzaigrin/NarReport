@@ -447,6 +447,71 @@ pandoc.table( as.data.frame( ps[, list( name, iops, bw, util, rt, ql, piops ) ] 
             )
 ```
 
+\newpage
+
+Histogram of total throughput by 95th percentile of all Pools and RAID Groups.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE }
+ggplot( data = ps, aes( 1 : dim(ps)[1], iops ) ) +
+  geom_bar( stat = "identity", fill="blue" ) +
+  ylab( "IOPS" ) + xlab( "" ) + 
+  ggtitle( "Total IOPS on all Pools and RAID Groups by 95th percentile" ) +
+  geom_line( aes( y = ( cumsum( ps$iops ) * max( ps$iops ) ) / max( cumsum( ps$iops ) ) ) ) +
+  scale_x_discrete( limits = c( 1 : dim(ps)[1]), label = ps$object ) +
+  theme( axis.text.x = element_text( angle = 90, size = 10, face="bold" ), legend.title = element_blank() )
+```
+
+\newpage
+
+### Skew
+
+Distribution of IOPS by LUNs size.
+
+In the next table we can see LUN ID, LUN Name, 95th IOPS, LUN Size in GB, cumulative sums of % IOPS and cumulative sums of % Size.
+
+```{r echo = FALSE, message = FALSE, results = 'asis', warning = FALSE }
+lun.config <- rbindlist( lapply( xpathSApply( config.doc, "//object[@type='Pool Public LUN' or
+                                                                    @type='Public RaidGroup LUN' or
+                                                                    @type='Private RaidGroup LUN']", xmlGetAttr, 'name' ),
+              function(x) data.table( lun = x,
+                                      size = xpathSApply( config.doc,
+                                               paste0( "//object[@name='", x, "']//value[@type='LUN Capacity' and
+                                                       @metric='Blocks']" ),
+                                               xmlValue )
+              ))
+)
+lun.config$size <- as.numeric(lun.config$size)
+lun.config$size <- lun.config$size / 2048
+lun.config$object <- str_replace_all( lun.config$lun, "([[:print:]]+) \\[([0-9]+)([[:print:]]+)","\\2" )
+lun.config$lun <- NULL
+
+lun.skew <- merge( lun.sum[ stat == "95th", .(object, name, owner, iops) ], lun.config, by = "object" )
+lun.skew <- lun.skew[ order( lun.skew$iops, decreasing = TRUE ), ]
+lun.sum.iops <- sum( lun.skew$iops )
+lun.sum.size <- sum( lun.skew$size )
+lun.skew$piops <- (lun.skew$iops / lun.sum.iops) * 100
+lun.skew$psize <- (lun.skew$size / lun.sum.size) * 100
+lun.skew$cspiops <- cumsum(lun.skew$piops)
+lun.skew$cspsize <- cumsum(lun.skew$psize)
+lun.skew$piops <- round( lun.skew$piops, 2 )
+lun.skew$psize <- round( lun.skew$psize, 2 )
+lun.skew$cspiops <- round( lun.skew$cspiops, 2 )
+lun.skew$cspsize <- round( lun.skew$cspsize, 2 )
+lun.skew$size <- lun.skew$size / 1024
+pandoc.table( as.data.frame(lun.skew[, list( object, name, owner, iops, size, cspiops, cspsize) ]),
+              caption = "Distribution of IOPS by size.",
+              justify = c( 'left', 'left', 'left', 'right', 'right', 'right', 'right' ) )
+```
+
+```{r echo = FALSE, message = FALSE, warning = FALSE }
+ggplot( data = lun.skew, aes( x = cspsize, y = cspiops )) + geom_line() +
+  xlab("% Size") + ylab("% IOPS") + ggtitle("Skew by 95th percentile") +
+  theme( axis.text.x = element_text( angle = 90, size = 7 ), axis.text.y = element_text( size = 7 ) ) +
+  scale_x_discrete() + scale_y_discrete() + coord_equal()
+```
+
+\newpage
+
 ### Summary of LUNs performance
 
 The list of all LUNs with 95th percentile of IOPS, bandwidth, utilization, response time and queue length, sorted by IOPS.
