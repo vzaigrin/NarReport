@@ -13,6 +13,8 @@ This applications takes CSV, configuration and relation files, extracted from so
 No installation required.
 Application is available here: (https://vzaigrin.shinyapps.io/NarReport/)
 
+But it runs much faster on local computer in the RStudio or in local Shiny server (https://www.rstudio.com/products/shiny/shiny-server).
+
 ## Usage Instructions
 
 1. Generate csv file from nar files by this command:
