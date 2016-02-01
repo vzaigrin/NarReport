@@ -11,9 +11,9 @@ This applications takes CSV, configuration and relation files, extracted from so
 
 ## Installation
 No installation required.
-Application is available here: (https://vzaigrin.shinyapps.io/NarReport/)
+Application is available here: (https://vzaigrin.shinyapps.io/NarReport)
 
-But it runs much faster on local computer in the RStudio or in local Shiny server (https://www.rstudio.com/products/shiny/shiny-server).
+But it runs much faster on local computer in the RStudio (https://www.rstudio.com/products/RStudio) or in local Shiny server (https://www.rstudio.com/products/shiny/shiny-server).
 
 ## Usage Instructions
 
